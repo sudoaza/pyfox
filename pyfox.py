@@ -46,18 +46,12 @@ def history(cursor, pattern=None, src=""):
     html = u""
     html = read_template()
     if src == 'firefox':
-        sql = """select url, title, last_visit_date,rev_host
-        from moz_historyvisits natural join moz_places where
-        last_visit_date is not null and url  like 'http%' and title is not null
-        and url not like '%google.com%' and url not like '%gmail.com%' and
-        url not like '%facebook.com%' and url not like '%amazon.com%' and
-        url not like '%127.0.0.1%' and url not like '%google.com%'
-        and url not like '%duckduckgo.com%'
-        and url not like '%change.org%' and url not like
-        '%twitter.com%' and url not like '%google.co.in%' """
+        sql = """SELECT url, title, last_visit_date, rev_host 
+                FROM moz_historyvisits
+                JOIN moz_places ON (moz_historyvisits.place_id = moz_places.id)"""
 
         if pattern is not None:
-            sql += " and url like '%"+pattern+"%' "
+            sql += " WHERE url like '%"+pattern+"%' "
         sql += " order by last_visit_date desc;"
 
 
@@ -68,7 +62,7 @@ def history(cursor, pattern=None, src=""):
             link = row[0]
             title = row[1]
 
-            html += "<tr><td><a href='" + str(link) + "'>" + str(title[:100]) +\
+            html += "<tr><td><a href='" + str(link) + "'>" + str(title)[:100] +\
             "</a></td>" + "<td>" + str(last_visit) + "</td>" + "<td>" + \
             str(link[:100]) + "</td>" + "</tr>\n"
             #print(a)
@@ -141,19 +135,23 @@ def get_path(browser):
 
     return path
 
+def get_default_profile():
+    firefox_path = get_path('firefox')
+    home_dir = os.environ['HOME']
+    firefox_path = home_dir + firefox_path; print(firefox_path)
+    profiles = [i for i in os.listdir(firefox_path) if i.endswith('.default')]
+    return firefox_path+profiles[0]
+
 if __name__ == "__main__":
     DESC_PYFOX = "Extract information from firefox's internal database"
     parser = argparse.ArgumentParser(description=DESC_PYFOX)
     parser.add_argument('--bm', '-b', default="")
     parser.add_argument('--hist', '-y', default="")
+    parser.add_argument('--profile', '-p', default=get_default_profile())
     args = parser.parse_args()
 
     try:
-        firefox_path = get_path('firefox')
-        home_dir = os.environ['HOME']
-        firefox_path = home_dir + firefox_path; print(firefox_path)
-        profiles = [i for i in os.listdir(firefox_path) if i.endswith('.default')]
-        sqlite_path = firefox_path+ profiles[0]+'/places.sqlite'
+        sqlite_path = args.profile+'/places.sqlite'
         print(sqlite_path)
         if os.path.exists(sqlite_path):
             firefox_connection = sqlite3.connect(sqlite_path)
